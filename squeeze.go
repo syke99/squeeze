@@ -2,8 +2,6 @@ package squeeze
 
 import (
 	"encoding/json"
-	"errors"
-	"reflect"
 	"strings"
 
 	"github.com/doublerebel/bellows"
@@ -48,7 +46,7 @@ func marshalIntermediary[T any](field string, parent, intermediary map[string]in
 // which T to use a field from
 type Rule[T any] func(left, right T) Result
 
-// Rules maps a Rule to a given T's field;]. It accomplishes
+// Rules maps a Rule to a given T's field. It accomplishes
 // this by matching defined json struct tags. These two strings
 // MUST equal
 type Rules[T any] map[string]Rule[T]
@@ -133,26 +131,21 @@ func squeeze[T any](left, right T, rules Rules[T]) (*T, error) {
 // has a length of one, it will immediately return the T
 // stored at index 0
 func Squeeze[T any](structs []T, rules Rules[T]) (T, error) {
-	if reflect.ValueOf(*new(T)).Type().Kind() != reflect.Struct {
-		return *new(T), errors.New("expected T to be a struct type")
-	}
-
-	var res *T
-	var err error
+	res, err := validateStruct(*new(T))
 
 	if len(structs) == 0 {
 		return *new(T), nil
 	} else if len(structs) == 1 {
 		return structs[0], nil
 	} else {
-		res = &structs[0]
+		res = structs[0]
 
 		for i, t := range structs {
 			if i == 0 {
 				continue
 			}
 
-			left := *res
+			left := res
 			right := t
 
 			r, err := squeeze(left, right, rules)
@@ -160,13 +153,13 @@ func Squeeze[T any](structs []T, rules Rules[T]) (T, error) {
 				if r == nil {
 					return *new(T), err
 				} else {
-					return *res, err
+					return res, err
 				}
 			}
 
-			*res = *r
+			res = *r
 		}
 	}
 
-	return *res, err
+	return res, err
 }
